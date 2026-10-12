@@ -76,6 +76,9 @@ tr.fresh td{background:var(--gold-soft);transition:background 1.6s}
 .ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}
 .primary:disabled{opacity:.5;cursor:not-allowed}
 .ghost.sm{padding:4px 12px;font-size:13px}
+.keybox label{font-weight:600}
+.keybox .up{margin-top:8px}
+.keybox input{flex:1;min-width:0;font:500 14px var(--f-num);padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 #up-preview{margin-top:10px;overflow-x:auto}
 td.bad{color:var(--warn);font-family:var(--f-th)}
 @media (max-width:760px){.grid{grid-template-columns:1fr}.form{grid-template-columns:repeat(2,minmax(0,1fr))}.form button{grid-column:1/-1}}
@@ -97,6 +100,14 @@ td.bad{color:var(--warn);font-family:var(--f-th)}
     <span id="conn" class="dot warn">กำลังเชื่อมต่อ Firebase</span>
     <span id="updated">ยังไม่มีการอัปเดต</span>
   </div>
+
+  <form class="panel keybox" id="keybox" hidden>
+    <label for="key-in">ใส่รหัสเข้าใช้งาน หรือวางลิงก์เต็มที่ได้รับ</label>
+    <div class="up">
+      <input id="key-in" type="text" autocomplete="off" spellcheck="false" placeholder="เช่น Q4Bv... หรือ https://...#k=...">
+      <button type="submit" class="primary">เข้าใช้งาน</button>
+    </div>
+  </form>
 
   <div class="tabs" role="group" aria-label="เลือกลูกค้า">
     <button type="button" data-c="all" aria-pressed="true">ลูกค้าทั้งหมด</button>
@@ -180,7 +191,7 @@ const $=id=>document.getElementById(id);
 // รหัสลับมากับลิงก์ (#k=...) ไม่เก็บไว้ในโค้ด — Rules ฝั่ง Firebase อนุญาตเฉพาะรหัสที่ถูก
 // เปิดด้วยลิงก์เต็มครั้งเดียว เครื่องนั้นจะจำรหัสไว้ เปิดลิงก์สั้นครั้งต่อไปก็ใช้ได้
 const KEY=(()=>{
-  const fromUrl=(new URLSearchParams(location.hash.slice(1)).get("k")||"").trim();
+  const fromUrl=(new URLSearchParams(location.hash.slice(1)).get("k")||new URLSearchParams(location.search).get("k")||"").trim();
   let saved="";try{saved=localStorage.getItem("cu-key")||"";}catch(e){}
   if(fromUrl){try{localStorage.setItem("cu-key",fromUrl);}catch(e){}return fromUrl;}
   if(saved)history.replaceState(null,"","#k="+saved);
@@ -247,8 +258,17 @@ const toRec=r=>({customer:r.customer,month:r.month,trips:Math.round(r.trips),wei
   revenue:Math.round(r.revenue),updatedAt:new Date().toISOString()});
 
 // ---- connect ----
+$("keybox").addEventListener("submit",e=>{
+  e.preventDefault();
+  const v=$("key-in").value.trim(), m=v.match(/[#?&]k=([A-Za-z0-9_-]+)/);
+  const k=m?m[1]:v;
+  if(!/^[A-Za-z0-9_-]{16,}$/.test(k)){setConn(false,"รหัสไม่ถูกรูปแบบ ตรวจว่าคัดลอกมาครบ");return;}
+  try{localStorage.setItem("cu-key",k);}catch(e){}
+  location.replace(location.pathname+"#k="+k);location.reload();
+});
 if(!/^[A-Za-z0-9_-]{16,}$/.test(KEY)){
-  setConn(false,"ลิงก์ไม่ครบ ขอลิงก์เต็มจากผู้ดูแล");
+  setConn(false,"ยังไม่มีรหัสเข้าใช้งาน");
+  $("keybox").hidden=false;$("key-in").focus();
 }else{
   onSnapshot(recCol(),snap=>{
     records=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.month&&r.customer);
@@ -258,8 +278,8 @@ if(!/^[A-Za-z0-9_-]{16,}$/.test(KEY)){
     if(freshId)setTimeout(()=>{freshId=null;render()},1800);
   },err=>{
     records=[];setWritable(false);render();
-    if(denied(err)){try{localStorage.removeItem("cu-key");}catch(e){}}
-    setConn(false,denied(err)?"ลิงก์ไม่ถูกต้องหรือถูกยกเลิกแล้ว ขอลิงก์ใหม่จากผู้ดูแล":"การเชื่อมต่อหลุด รีเฟรชหน้าเพื่อเชื่อมใหม่");
+    if(denied(err)){try{localStorage.removeItem("cu-key");}catch(e){}$("keybox").hidden=false;}
+    setConn(false,denied(err)?"รหัสไม่ถูกต้องหรือถูกยกเลิกแล้ว ขอรหัสใหม่จากผู้ดูแล":"การเชื่อมต่อหลุด รีเฟรชหน้าเพื่อเชื่อมใหม่");
   });
 }
 
