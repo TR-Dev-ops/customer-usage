@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ยอดใช้บริการลูกค้า</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Montserrat:wght@500;600;700&display=swap">
+<style>
+/* Layout: header strip → status/login line → customer tabs → KPI row → chart + table → upload → add-record form */
+:root{
+  --bg:#fbf6ea; --surface:#ffffff; --ink:#1e2a38; --muted:#5b6573; --line:#e3ddcd;
+  --gold:#ffc53d; --gold-soft:#fff1c9; --blue:#8bbade; --a:#1e2a38; --b:#e0a20a;
+  --ok:#2f7d4f; --ok-soft:#e3f2e8; --warn:#b23f00; --warn-soft:#ffe9da;
+  --f-th:"IBM Plex Sans Thai",Tahoma,sans-serif; --f-num:"Montserrat","IBM Plex Sans Thai",Tahoma,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141c26; --surface:#1e2a38; --ink:#f3efe4; --muted:#a8b2bf; --line:#2f3d4f;
+  --gold:#ffc53d; --gold-soft:#3a3420; --blue:#8bbade; --a:#8bbade; --b:#ffc53d;
+  --ok:#7fd3a0; --ok-soft:#1f3a2b; --warn:#ffab7a; --warn-soft:#3d2618; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141c26; --surface:#1e2a38; --ink:#f3efe4; --muted:#a8b2bf; --line:#2f3d4f;
+  --gold:#ffc53d; --gold-soft:#3a3420; --blue:#8bbade; --a:#8bbade; --b:#ffc53d;
+  --ok:#7fd3a0; --ok-soft:#1f3a2b; --warn:#ffab7a; --warn-soft:#3d2618; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-th);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px}
+h1{font-size:clamp(22px,4vw,30px);margin:0;line-height:1.25;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0}
+.tag{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);white-space:nowrap}
+.status{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px;color:var(--muted)}
+.status .sp{flex:1}
+.dot{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-weight:600}
+.dot::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.dot.ok{background:var(--ok-soft);color:var(--ok)} .dot.warn{background:var(--warn-soft);color:var(--warn)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:600 14px var(--f-th);padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,.form input:focus-visible,.form select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi .v{font:700 clamp(20px,3.6vw,28px) var(--f-num);font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .u{font-size:13px;color:var(--muted);margin-left:4px;font-family:var(--f-th);font-weight:500}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.panel h2{font-size:16px;margin:0 0 10px}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg text{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td{font-variant-numeric:tabular-nums;font-family:var(--f-num);font-size:13px}
+td.c{font-family:var(--f-th);font-size:14px}
+.pill{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+tr.fresh td{background:var(--gold-soft);transition:background 1.6s}
+.empty{color:var(--muted);padding:22px 4px;text-align:center}
+.form{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:10px;align-items:end}
+.form label{display:grid;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.form input,.form select{font:500 14px var(--f-th);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%;min-width:0}
+.form button{font:600 14px var(--f-th);padding:9px 18px;border:0;border-radius:8px;background:var(--gold);color:#1e2a38;cursor:pointer;white-space:nowrap}
+.form button:disabled{opacity:.5;cursor:not-allowed}
+.msg{font-size:13px;min-height:1.4em;margin-top:8px;color:var(--muted)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.up{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.pick{display:inline-block;font:600 14px var(--f-th);padding:9px 16px;border-radius:8px;border:1.5px dashed var(--muted);cursor:pointer;color:var(--ink)}
+.pick:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+.pick input{position:absolute;opacity:0;width:1px;height:1px}
+.primary,.ghost{font:600 14px var(--f-th);padding:9px 18px;border-radius:8px;cursor:pointer}
+.primary{border:0;background:var(--gold);color:#1e2a38}
+.ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}
+.primary:disabled{opacity:.5;cursor:not-allowed}
+.ghost.sm{padding:4px 12px;font-size:13px}
+#up-preview{margin-top:10px;overflow-x:auto}
+td.bad{color:var(--warn);font-family:var(--f-th)}
+@media (max-width:760px){.grid{grid-template-columns:1fr}.form{grid-template-columns:repeat(2,minmax(0,1fr))}.form button{grid-column:1/-1}}
+@media (max-width:460px){.kpis{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){tr.fresh td{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>ยอดใช้บริการขนส่งของลูกค้า</h1>
+      <p class="sub">เปิดลิงก์นี้จากหลายเครื่อง ทุกคนเห็นข้อมูลชุดเดียวกัน</p>
+    </div>
+    <span class="tag">ข้อมูลตัวอย่างสำหรับการสอน</span>
+  </header>
+
+  <div class="status">
+    <span id="conn" class="dot warn">กำลังเชื่อมต่อ Firebase</span>
+    <span id="updated">ยังไม่มีการอัปเดต</span>
+  </div>
+
+  <div class="tabs" role="group" aria-label="เลือกลูกค้า">
+    <button type="button" data-c="all" aria-pressed="true">ลูกค้าทั้งหมด</button>
+    <button type="button" data-c="A" aria-pressed="false">ลูกค้า A</button>
+    <button type="button" data-c="B" aria-pressed="false">ลูกค้า B</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="l">จำนวนเที่ยว</div><div class="v" id="k-trips">0<span class="u">เที่ยว</span></div></div>
+    <div class="kpi"><div class="l">น้ำหนักรวม</div><div class="v" id="k-weight">0<span class="u">ตัน</span></div></div>
+    <div class="kpi"><div class="l">ค่าบริการรวม</div><div class="v" id="k-rev">0<span class="u">บาท</span></div></div>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>ค่าบริการรายเดือน (บาท)</h2>
+      <div class="legend"><span><i style="background:var(--a)"></i>ลูกค้า A</span><span><i style="background:var(--b)"></i>ลูกค้า B</span></div>
+      <div id="chart"></div>
+    </section>
+    <section class="panel">
+      <h2>รายการรายเดือน</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>เดือน</th><th>ลูกค้า</th><th>เที่ยว</th><th>ตัน</th><th>บาท</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>อัปโหลดไฟล์ Excel</h2>
+    <p class="hint">ไฟล์ต้องมีคอลัมน์ ลูกค้า, เดือน (เช่น 2026-09), จำนวนเที่ยว, น้ำหนัก (ตัน), ค่าบริการ (บาท)</p>
+    <div class="up">
+      <label class="pick" for="up-file">เลือกไฟล์ .xlsx หรือ .csv<input id="up-file" type="file" accept=".xlsx,.xls,.csv"></label>
+      <span id="up-name" class="hint">ยังไม่ได้เลือกไฟล์</span>
+    </div>
+    <div id="up-preview"></div>
+    <div class="up" id="up-actions" hidden>
+      <button type="button" id="up-save" class="primary">บันทึกลงที่เก็บกลาง</button>
+      <button type="button" id="up-cancel" class="ghost">ยกเลิก</button>
+    </div>
+    <p class="msg" id="up-msg"></p>
+  </section>
+
+  <section class="panel">
+    <h2>เพิ่มหรือแก้ข้อมูลเดือน</h2>
+    <form class="form" id="f">
+      <label for="f-c">ลูกค้า<select id="f-c"><option value="A">ลูกค้า A</option><option value="B">ลูกค้า B</option></select></label>
+      <label for="f-m">เดือน<input id="f-m" type="month" required></label>
+      <label for="f-t">จำนวนเที่ยว<input id="f-t" type="number" min="0" step="1" required></label>
+      <label for="f-w">น้ำหนัก (ตัน)<input id="f-w" type="number" min="0" step="0.1" required></label>
+      <label for="f-r">ค่าบริการ (บาท)<input id="f-r" type="number" min="0" step="1" required></label>
+      <button id="f-btn" type="submit" disabled>บันทึก</button>
+    </form>
+    <p class="msg" id="msg">ถ้าลูกค้าและเดือนซ้ำกับที่มีอยู่ ระบบจะแทนที่ข้อมูลเดิม</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// วางค่าจาก Firebase Console → Project settings → Your apps → Web app (SDK setup and configuration)
+const firebaseConfig = {
+  apiKey: "AIzaSyBuFIrLiD5qXqY4R_0AQ3gvvAEzuVYPqQE",
+  authDomain: "demo01-dc83f.firebaseapp.com",
+  projectId: "demo01-dc83f",
+  storageBucket: "demo01-dc83f.firebasestorage.app",
+  messagingSenderId: "303627613493",
+  appId: "1:303627613493:web:79fcd9ac9084acd707087c"
+};
+
+const TH_M=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const mLabel=k=>{const[y,m]=k.split("-");return TH_M[+m-1]+" "+String(+y+543).slice(2)};
+const nf=new Intl.NumberFormat("th-TH");
+const nf1=new Intl.NumberFormat("th-TH",{maximumFractionDigits:1});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let records=[], sel="all", freshId=null, lastUpdate=null, canWrite=false;
+const $=id=>document.getElementById(id);
+
+// รหัสลับมากับลิงก์ (#k=...) ไม่เก็บไว้ในโค้ด — Rules ฝั่ง Firebase อนุญาตเฉพาะรหัสที่ถูก
+const KEY=(new URLSearchParams(location.hash.slice(1)).get("k")||"").trim();
+const app=initializeApp(firebaseConfig);
+const fs=getFirestore(app);
+const recCol=()=>collection(fs,"spaces",KEY,"records");
+const recDoc=id=>doc(fs,"spaces",KEY,"records",id);
+
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
+  sel=b.dataset.c;
+  document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));
+  render();
+}));
+
+function render(){
+  const list=records.filter(r=>sel==="all"||r.customer===sel);
+  const sum=k=>list.reduce((a,r)=>a+(+r[k]||0),0);
+  $("k-trips").innerHTML=nf.format(sum("trips"))+'<span class="u">เที่ยว</span>';
+  $("k-weight").innerHTML=nf1.format(sum("weightTon"))+'<span class="u">ตัน</span>';
+  $("k-rev").innerHTML=nf.format(sum("revenue"))+'<span class="u">บาท</span>';
+  const tb=$("rows");
+  if(!list.length){tb.innerHTML=`<tr><td colspan="5" class="empty">${canWrite?"ยังไม่มีข้อมูล เพิ่มเดือนแรกได้จากฟอร์มด้านล่าง":"ยังไม่มีข้อมูลที่แสดงได้"}</td></tr>`;}
+  else{
+    tb.innerHTML=[...list].sort((a,b)=>b.month.localeCompare(a.month)||a.customer.localeCompare(b.customer)).map(r=>
+      `<tr${r.id===freshId?' class="fresh"':''}><td class="c">${mLabel(r.month)}</td><td class="c"><span class="pill" style="background:var(--${r.customer==="A"?"a":"b"})"></span>${esc(r.customer)}</td><td>${nf.format(r.trips)}</td><td>${nf1.format(r.weightTon)}</td><td>${nf.format(r.revenue)}</td></tr>`).join("");
+  }
+  drawChart();
+}
+
+function drawChart(){
+  const months=[...new Set(records.map(r=>r.month))].sort();
+  const el=$("chart");
+  if(!months.length){el.innerHTML='<p class="empty">กราฟจะแสดงเมื่อมีข้อมูล</p>';return;}
+  const W=520,H=230,L=52,R=8,T=10,B=28;
+  const series=sel==="all"?["A","B"]:[sel];
+  const val=(c,m)=>{const r=records.find(x=>x.customer===c&&x.month===m);return r?+r.revenue:0};
+  let max=Math.max(1,...months.flatMap(m=>series.map(c=>val(c,m))));
+  const step=Math.pow(10,Math.floor(Math.log10(max)));max=Math.ceil(max/step)*step;
+  const y=v=>T+(H-T-B)*(1-v/max);
+  const gw=(W-L-R)/months.length, bw=Math.min(28,(gw*0.7)/series.length);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="กราฟค่าบริการรายเดือน">`;
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);
+    s+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/>`;
+    s+=`<text x="${L-6}" y="${yy+4}" text-anchor="end">${v>=1000?nf.format(v/1000)+"k":nf.format(v)}</text>`;}
+  months.forEach((m,i)=>{
+    const cx=L+gw*i+gw/2, start=cx-bw*series.length/2;
+    series.forEach((c,j)=>{const v=val(c,m);const yy=y(v);
+      s+=`<rect x="${start+j*bw+1}" y="${yy}" width="${bw-2}" height="${H-B-yy}" rx="2" fill="var(--${c==="A"?"a":"b"})"><title>ลูกค้า ${c} ${mLabel(m)}: ${nf.format(v)} บาท</title></rect>`;});
+    s+=`<text x="${cx}" y="${H-8}" text-anchor="middle" style="font-family:var(--f-th)">${mLabel(m)}</text>`;
+  });
+  el.innerHTML=s+"</svg>";
+}
+
+function setUpdated(){
+  if(!lastUpdate){$("updated").textContent="ยังไม่มีการอัปเดต";return;}
+  $("updated").textContent="อัปเดตล่าสุด "+new Date(lastUpdate).toLocaleString("th-TH",{dateStyle:"medium",timeStyle:"short"});
+}
+function setConn(ok,text){$("conn").className="dot "+(ok?"ok":"warn");$("conn").textContent=text;}
+function setWritable(on){canWrite=on;$("f-btn").disabled=!on;if(pending.length)showPreview();}
+const denied=err=>err&&err.code==="permission-denied";
+const toRec=r=>({customer:r.customer,month:r.month,trips:Math.round(r.trips),weightTon:Math.round(r.weightTon*10)/10,
+  revenue:Math.round(r.revenue),updatedAt:new Date().toISOString()});
+
+// ---- connect ----
+if(!/^[A-Za-z0-9_-]{16,}$/.test(KEY)){
+  setConn(false,"ลิงก์ไม่ครบ ขอลิงก์เต็มจากผู้ดูแล");
+}else{
+  onSnapshot(recCol(),snap=>{
+    records=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.month&&r.customer);
+    lastUpdate=records.reduce((a,r)=>r.updatedAt&&r.updatedAt>a?r.updatedAt:a,"")||null;
+    setConn(true,"เชื่อมต่อที่เก็บข้อมูลกลางแล้ว");setWritable(true);
+    setUpdated();render();
+    if(freshId)setTimeout(()=>{freshId=null;render()},1800);
+  },err=>{
+    records=[];setWritable(false);render();
+    setConn(false,denied(err)?"ลิงก์ไม่ถูกต้องหรือถูกยกเลิกแล้ว ขอลิงก์ใหม่จากผู้ดูแล":"การเชื่อมต่อหลุด รีเฟรชหน้าเพื่อเชื่อมใหม่");
+  });
+}
+
+// ---- form ----
+$("f").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!canWrite)return;
+  const c=$("f-c").value,m=$("f-m").value;
+  if(!m){$("msg").textContent="เลือกเดือนก่อนบันทึก";return;}
+  const rec=toRec({customer:c,month:m,trips:+$("f-t").value,weightTon:+$("f-w").value,revenue:+$("f-r").value});
+  $("f-btn").disabled=true;$("msg").textContent="กำลังบันทึก...";
+  try{
+    const id=c+"_"+m; freshId=id;
+    await setDoc(recDoc(id),rec);
+    $("msg").textContent=`บันทึกลูกค้า ${c} เดือน ${mLabel(m)} แล้ว เครื่องอื่นจะเห็นข้อมูลนี้ทันที`;
+    $("f-t").value=$("f-w").value=$("f-r").value="";
+  }catch(err){
+    $("msg").textContent=denied(err)?"ไม่มีสิทธิ์บันทึก หรือข้อมูลไม่ถูกรูปแบบ":"บันทึกไม่สำเร็จ ลองอีกครั้ง";
+  }finally{$("f-btn").disabled=!canWrite;}
+});
+
+// ---- upload ----
+let pending=[];
+const findCol=(keys,words)=>keys.find(k=>words.some(w=>String(k).replace(/\s/g,"").toLowerCase().includes(w)));
+function toMonth(v){
+  if(v==null||v==="")return null;
+  if(typeof v==="number"){const d=XLSX.SSF.parse_date_code(v);return d?d.y+"-"+String(d.m).padStart(2,"0"):null;}
+  if(v instanceof Date)return v.getFullYear()+"-"+String(v.getMonth()+1).padStart(2,"0");
+  const m=String(v).trim().match(/^(\d{4})[-\/.](\d{1,2})/);
+  if(!m)return null;let y=+m[1];if(y>2400)y-=543;const mo=+m[2];
+  return mo>=1&&mo<=12?y+"-"+String(mo).padStart(2,"0"):null;
+}
+const num=v=>{const n=typeof v==="number"?v:parseFloat(String(v??"").replace(/,/g,""));return isFinite(n)&&n>=0?n:null};
+function parseRows(rows){
+  if(!rows.length)return[];
+  const keys=Object.keys(rows[0]);
+  const kc=findCol(keys,["ลูกค้า","customer"]),km=findCol(keys,["เดือน","month"]),kt=findCol(keys,["เที่ยว","trip"]),
+        kw=findCol(keys,["น้ำหนัก","weight","ตัน"]),kr=findCol(keys,["ค่าบริการ","revenue","บาท"]);
+  return rows.map(r=>{
+    const cRaw=String(r[kc]??"").trim().toUpperCase();const c=/B$/.test(cRaw)?"B":/A$/.test(cRaw)?"A":null;
+    const out={customer:c,month:toMonth(r[km]),trips:num(r[kt]),weightTon:num(r[kw]),revenue:num(r[kr])};
+    out.ok=!!(out.customer&&out.month&&out.trips!=null&&out.weightTon!=null&&out.revenue!=null);
+    return out;
+  }).filter(r=>r.customer||r.month||r.revenue!=null);
+}
+function showPreview(){
+  const ok=pending.filter(r=>r.ok).length,bad=pending.length-ok;
+  $("up-preview").innerHTML=pending.length?`<table><thead><tr><th>เดือน</th><th>ลูกค้า</th><th>เที่ยว</th><th>ตัน</th><th>บาท</th></tr></thead><tbody>${pending.map(r=>r.ok?
+    `<tr><td class="c">${mLabel(r.month)}</td><td class="c">${r.customer}</td><td>${nf.format(r.trips)}</td><td>${nf1.format(r.weightTon)}</td><td>${nf.format(r.revenue)}</td></tr>`:
+    `<tr><td class="bad" colspan="5">แถวนี้ข้อมูลไม่ครบหรือรูปแบบไม่ถูก จะไม่ถูกบันทึก</td></tr>`).join("")}</tbody></table>`:"";
+  $("up-actions").hidden=!ok;
+  $("up-save").disabled=!canWrite||!ok;
+  $("up-save").textContent=`บันทึก ${ok} แถวลงที่เก็บกลาง`;
+  $("up-msg").textContent=!pending.length?"ไม่พบข้อมูลในไฟล์":!canWrite?"ยังเชื่อมต่อที่เก็บข้อมูลไม่ได้ จึงบันทึกไม่ได้":bad?`ข้าม ${bad} แถวที่ข้อมูลไม่ครบ`:"ตรวจข้อมูลก่อนกดบันทึก เดือนและลูกค้าที่ซ้ำจะแทนที่ข้อมูลเดิม";
+}
+$("up-file").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;
+  $("up-name").textContent=f.name;
+  if(typeof XLSX==="undefined"){$("up-msg").textContent="โหลดตัวอ่านไฟล์ไม่สำเร็จ ลองรีเฟรชหน้า";return;}
+  try{
+    const wb=XLSX.read(await f.arrayBuffer());
+    pending=parseRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""}));
+    showPreview();
+  }catch(err){pending=[];$("up-preview").innerHTML="";$("up-actions").hidden=true;$("up-msg").textContent="อ่านไฟล์ไม่ได้ ตรวจว่าเป็นไฟล์ .xlsx หรือ .csv";}
+});
+function resetUpload(){pending=[];$("up-file").value="";$("up-name").textContent="ยังไม่ได้เลือกไฟล์";$("up-preview").innerHTML="";$("up-actions").hidden=true;}
+$("up-cancel").addEventListener("click",()=>{resetUpload();$("up-msg").textContent="";});
+$("up-save").addEventListener("click",async()=>{
+  if(!canWrite)return;
+  // เดือน+ลูกค้าซ้ำในไฟล์เดียวกัน ใช้แถวล่างสุด
+  const byId=new Map();pending.filter(r=>r.ok).forEach(r=>byId.set(r.customer+"_"+r.month,r));
+  const rows=[...byId.entries()];
+  $("up-save").disabled=true;$("up-msg").textContent="กำลังบันทึก...";
+  try{
+    for(let i=0;i<rows.length;i+=450){ // writeBatch รับได้สูงสุด 500 รายการต่อครั้ง
+      const b=writeBatch(fs);
+      rows.slice(i,i+450).forEach(([id,r])=>{b.set(recDoc(id),toRec(r));freshId=id;});
+      await b.commit();
+    }
+    resetUpload();$("up-msg").textContent=`บันทึก ${rows.length} แถวแล้ว เครื่องอื่นจะเห็นข้อมูลนี้ทันที`;
+  }catch(err){
+    $("up-save").disabled=false;
+    $("up-msg").textContent=denied(err)?"ไม่มีสิทธิ์บันทึก หรือมีแถวที่ข้อมูลไม่ถูกรูปแบบ (ยังไม่มีแถวไหนถูกบันทึก)":"บันทึกไม่สำเร็จ ลองอีกครั้ง";
+  }
+});
+
+const now=new Date();$("f-m").value=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+render();
+</script>
+</body>
+</html>
