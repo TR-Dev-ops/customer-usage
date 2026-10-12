@@ -178,7 +178,14 @@ let records=[], sel="all", freshId=null, lastUpdate=null, canWrite=false;
 const $=id=>document.getElementById(id);
 
 // รหัสลับมากับลิงก์ (#k=...) ไม่เก็บไว้ในโค้ด — Rules ฝั่ง Firebase อนุญาตเฉพาะรหัสที่ถูก
-const KEY=(new URLSearchParams(location.hash.slice(1)).get("k")||"").trim();
+// เปิดด้วยลิงก์เต็มครั้งเดียว เครื่องนั้นจะจำรหัสไว้ เปิดลิงก์สั้นครั้งต่อไปก็ใช้ได้
+const KEY=(()=>{
+  const fromUrl=(new URLSearchParams(location.hash.slice(1)).get("k")||"").trim();
+  let saved="";try{saved=localStorage.getItem("cu-key")||"";}catch(e){}
+  if(fromUrl){try{localStorage.setItem("cu-key",fromUrl);}catch(e){}return fromUrl;}
+  if(saved)history.replaceState(null,"","#k="+saved);
+  return saved;
+})();
 const app=initializeApp(firebaseConfig);
 const fs=getFirestore(app);
 const recCol=()=>collection(fs,"spaces",KEY,"records");
@@ -251,6 +258,7 @@ if(!/^[A-Za-z0-9_-]{16,}$/.test(KEY)){
     if(freshId)setTimeout(()=>{freshId=null;render()},1800);
   },err=>{
     records=[];setWritable(false);render();
+    if(denied(err)){try{localStorage.removeItem("cu-key");}catch(e){}}
     setConn(false,denied(err)?"ลิงก์ไม่ถูกต้องหรือถูกยกเลิกแล้ว ขอลิงก์ใหม่จากผู้ดูแล":"การเชื่อมต่อหลุด รีเฟรชหน้าเพื่อเชื่อมใหม่");
   });
 }
@@ -305,7 +313,7 @@ function showPreview(){
   $("up-actions").hidden=!ok;
   $("up-save").disabled=!canWrite||!ok;
   $("up-save").textContent=`บันทึก ${ok} แถวลงที่เก็บกลาง`;
-  $("up-msg").textContent=!pending.length?"ไม่พบข้อมูลในไฟล์":!canWrite?"ยังเชื่อมต่อที่เก็บข้อมูลไม่ได้ จึงบันทึกไม่ได้":bad?`ข้าม ${bad} แถวที่ข้อมูลไม่ครบ`:"ตรวจข้อมูลก่อนกดบันทึก เดือนและลูกค้าที่ซ้ำจะแทนที่ข้อมูลเดิม";
+  $("up-msg").textContent=!pending.length?"ไม่พบข้อมูลในไฟล์":!canWrite?"บันทึกไม่ได้: "+$("conn").textContent:bad?`ข้าม ${bad} แถวที่ข้อมูลไม่ครบ`:"ตรวจข้อมูลก่อนกดบันทึก เดือนและลูกค้าที่ซ้ำจะแทนที่ข้อมูลเดิม";
 }
 $("up-file").addEventListener("change",async e=>{
   const f=e.target.files[0];if(!f)return;
