@@ -6,7 +6,7 @@
 <title>ยอดใช้บริการลูกค้า</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Montserrat:wght@500;600;700&display=swap">
 <style>
-/* Layout: header strip → status/login line → customer tabs → KPI row → chart + table → upload → add-record form */
+/* Layout: login card (signed out) | header → status/user line → [admin: customer tabs] → KPI row → chart + table → [admin: upload, add-record form] */
 :root{
   --bg:#fbf6ea; --surface:#ffffff; --ink:#1e2a38; --muted:#5b6573; --line:#e3ddcd;
   --gold:#ffc53d; --gold-soft:#fff1c9; --blue:#8bbade; --a:#1e2a38; --b:#e0a20a;
@@ -32,13 +32,14 @@ h1{font-size:clamp(22px,4vw,30px);margin:0;line-height:1.25;text-wrap:balance}
 .tag{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);white-space:nowrap}
 .status{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px;color:var(--muted)}
 .status .sp{flex:1}
+.who{font-weight:600;color:var(--ink)}
 .dot{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-weight:600}
 .dot::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
 .dot.ok{background:var(--ok-soft);color:var(--ok)} .dot.warn{background:var(--warn-soft);color:var(--warn)}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tabs button{font:600 14px var(--f-th);padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-button:focus-visible,.form input:focus-visible,.form select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .kpi .l{font-size:13px;color:var(--muted)}
@@ -76,40 +77,55 @@ tr.fresh td{background:var(--gold-soft);transition:background 1.6s}
 .ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}
 .primary:disabled{opacity:.5;cursor:not-allowed}
 .ghost.sm{padding:4px 12px;font-size:13px}
-.keybox label{font-weight:600}
-.keybox .up{margin-top:8px}
-.keybox input{flex:1;min-width:0;font:500 14px var(--f-num);padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 #up-preview{margin-top:10px;overflow-x:auto}
 td.bad{color:var(--warn);font-family:var(--f-th)}
+/* login */
+.login{max-width:380px;margin:8vh auto 0;display:grid;gap:14px}
+.login h1{font-size:24px;text-align:center}
+.login .sub{text-align:center}
+.login form{display:grid;gap:12px}
+.login label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.login input{font:500 16px var(--f-th);padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.login .primary{padding:11px 18px;font-size:15px}
+.login .err{color:var(--warn);font-size:13px;min-height:1.4em;margin:0;text-align:center}
 @media (max-width:760px){.grid{grid-template-columns:1fr}.form{grid-template-columns:repeat(2,minmax(0,1fr))}.form button{grid-column:1/-1}}
 @media (max-width:460px){.kpis{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){tr.fresh td{transition:none}}
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="login" id="login" hidden>
+  <div>
+    <h1>ยอดใช้บริการขนส่ง</h1>
+    <p class="sub">เข้าสู่ระบบเพื่อดูข้อมูลของคุณ</p>
+  </div>
+  <form class="panel" id="login-f">
+    <label for="l-user">ชื่อผู้ใช้<input id="l-user" type="text" autocomplete="username" autocapitalize="characters" spellcheck="false" required placeholder="เช่น A"></label>
+    <label for="l-pass">รหัสผ่าน<input id="l-pass" type="password" autocomplete="current-password" required></label>
+    <button type="submit" class="primary" id="l-btn">เข้าสู่ระบบ</button>
+    <p class="err" id="l-err" role="alert"></p>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
   <header>
     <div>
-      <h1>ยอดใช้บริการขนส่งของลูกค้า</h1>
-      <p class="sub">เปิดลิงก์นี้จากหลายเครื่อง ทุกคนเห็นข้อมูลชุดเดียวกัน</p>
+      <h1 id="title">ยอดใช้บริการขนส่งของลูกค้า</h1>
+      <p class="sub" id="subtitle">เปิดลิงก์นี้จากหลายเครื่อง ทุกคนเห็นข้อมูลชุดเดียวกัน</p>
     </div>
     <span class="tag">ข้อมูลตัวอย่างสำหรับการสอน</span>
   </header>
 
   <div class="status">
-    <span id="conn" class="dot warn">กำลังเชื่อมต่อ Firebase</span>
+    <span id="conn" class="dot warn">กำลังเชื่อมต่อ</span>
     <span id="updated">ยังไม่มีการอัปเดต</span>
+    <span class="sp"></span>
+    <span class="who" id="who"></span>
+    <button type="button" id="btn-logout" class="ghost sm">ออกจากระบบ</button>
   </div>
 
-  <form class="panel keybox" id="keybox" hidden>
-    <label for="key-in">ใส่รหัสเข้าใช้งาน หรือวางลิงก์เต็มที่ได้รับ</label>
-    <div class="up">
-      <input id="key-in" type="text" autocomplete="off" spellcheck="false" placeholder="เช่น Q4Bv... หรือ https://...#k=...">
-      <button type="submit" class="primary">เข้าใช้งาน</button>
-    </div>
-  </form>
-
-  <div class="tabs" role="group" aria-label="เลือกลูกค้า">
+  <div class="tabs admin-only" role="group" aria-label="เลือกลูกค้า">
     <button type="button" data-c="all" aria-pressed="true">ลูกค้าทั้งหมด</button>
     <button type="button" data-c="A" aria-pressed="false">ลูกค้า A</button>
     <button type="button" data-c="B" aria-pressed="false">ลูกค้า B</button>
@@ -124,7 +140,7 @@ td.bad{color:var(--warn);font-family:var(--f-th)}
   <div class="grid">
     <section class="panel">
       <h2>ค่าบริการรายเดือน (บาท)</h2>
-      <div class="legend"><span><i style="background:var(--a)"></i>ลูกค้า A</span><span><i style="background:var(--b)"></i>ลูกค้า B</span></div>
+      <div class="legend" id="legend"></div>
       <div id="chart"></div>
     </section>
     <section class="panel">
@@ -136,7 +152,7 @@ td.bad{color:var(--warn);font-family:var(--f-th)}
     </section>
   </div>
 
-  <section class="panel">
+  <section class="panel admin-only">
     <h2>อัปโหลดไฟล์ Excel</h2>
     <p class="hint">ไฟล์ต้องมีคอลัมน์ ลูกค้า, เดือน (เช่น 2026-09), จำนวนเที่ยว, น้ำหนัก (ตัน), ค่าบริการ (บาท)</p>
     <div class="up">
@@ -151,7 +167,7 @@ td.bad{color:var(--warn);font-family:var(--f-th)}
     <p class="msg" id="up-msg"></p>
   </section>
 
-  <section class="panel">
+  <section class="panel admin-only">
     <h2>เพิ่มหรือแก้ข้อมูลเดือน</h2>
     <form class="form" id="f">
       <label for="f-c">ลูกค้า<select id="f-c"><option value="A">ลูกค้า A</option><option value="B">ลูกค้า B</option></select></label>
@@ -168,9 +184,9 @@ td.bad{color:var(--warn);font-family:var(--f-th)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, writeBatch, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, writeBatch, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// วางค่าจาก Firebase Console → Project settings → Your apps → Web app (SDK setup and configuration)
 const firebaseConfig = {
   apiKey: "AIzaSyBuFIrLiD5qXqY4R_0AQ3gvvAEzuVYPqQE",
   authDomain: "demo01-dc83f.firebaseapp.com",
@@ -180,27 +196,25 @@ const firebaseConfig = {
   appId: "1:303627613493:web:79fcd9ac9084acd707087c"
 };
 
+// ชื่อผู้ใช้ → อีเมลในระบบ Firebase Auth (a → a@customer-usage.local)
+// Firebase บังคับรหัสผ่านอย่างน้อย 6 ตัว จึงต่อท้าย PW_SUFFIX ให้อัตโนมัติ (ผู้ใช้พิมพ์ A123 → ระบบใช้ A123#cu)
+// สิทธิ์จริงอยู่ที่ Firestore Rules: a@ เห็นเฉพาะลูกค้า A, b@ เฉพาะ B, admin@ เห็นและแก้ได้ทั้งหมด
+const DOMAIN="customer-usage.local", PW_SUFFIX="#cu";
+const ROLE_OF={["a@"+DOMAIN]:"A",["b@"+DOMAIN]:"B",["admin@"+DOMAIN]:"admin"};
+
 const TH_M=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 const mLabel=k=>{const[y,m]=k.split("-");return TH_M[+m-1]+" "+String(+y+543).slice(2)};
 const nf=new Intl.NumberFormat("th-TH");
 const nf1=new Intl.NumberFormat("th-TH",{maximumFractionDigits:1});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let records=[], sel="all", freshId=null, lastUpdate=null, canWrite=false;
+let records=[], sel="all", freshId=null, lastUpdate=null, canWrite=false, role=null, unsub=null, pending=[];
 const $=id=>document.getElementById(id);
+try{localStorage.removeItem("cu-key");}catch(e){} // รหัสลับของ V1 ไม่ใช้แล้ว
 
-// รหัสลับมากับลิงก์ (#k=...) ไม่เก็บไว้ในโค้ด — Rules ฝั่ง Firebase อนุญาตเฉพาะรหัสที่ถูก
-// เปิดด้วยลิงก์เต็มครั้งเดียว เครื่องนั้นจะจำรหัสไว้ เปิดลิงก์สั้นครั้งต่อไปก็ใช้ได้
-const KEY=(()=>{
-  const fromUrl=(new URLSearchParams(location.hash.slice(1)).get("k")||new URLSearchParams(location.search).get("k")||"").trim();
-  let saved="";try{saved=localStorage.getItem("cu-key")||"";}catch(e){}
-  if(fromUrl){try{localStorage.setItem("cu-key",fromUrl);}catch(e){}return fromUrl;}
-  if(saved)history.replaceState(null,"","#k="+saved);
-  return saved;
-})();
 const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
 const fs=getFirestore(app);
-const recCol=()=>collection(fs,"spaces",KEY,"records");
-const recDoc=id=>doc(fs,"spaces",KEY,"records",id);
+const recCol=collection(fs,"records");
 
 document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{
   sel=b.dataset.c;
@@ -215,7 +229,7 @@ function render(){
   $("k-weight").innerHTML=nf1.format(sum("weightTon"))+'<span class="u">ตัน</span>';
   $("k-rev").innerHTML=nf.format(sum("revenue"))+'<span class="u">บาท</span>';
   const tb=$("rows");
-  if(!list.length){tb.innerHTML=`<tr><td colspan="5" class="empty">${canWrite?"ยังไม่มีข้อมูล เพิ่มเดือนแรกได้จากฟอร์มด้านล่าง":"ยังไม่มีข้อมูลที่แสดงได้"}</td></tr>`;}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="5" class="empty">${role==="admin"?"ยังไม่มีข้อมูล เพิ่มได้จากฟอร์มหรืออัปโหลดไฟล์ด้านล่าง":"ยังไม่มีข้อมูล"}</td></tr>`;}
   else{
     tb.innerHTML=[...list].sort((a,b)=>b.month.localeCompare(a.month)||a.customer.localeCompare(b.customer)).map(r=>
       `<tr${r.id===freshId?' class="fresh"':''}><td class="c">${mLabel(r.month)}</td><td class="c"><span class="pill" style="background:var(--${r.customer==="A"?"a":"b"})"></span>${esc(r.customer)}</td><td>${nf.format(r.trips)}</td><td>${nf1.format(r.weightTon)}</td><td>${nf.format(r.revenue)}</td></tr>`).join("");
@@ -224,11 +238,12 @@ function render(){
 }
 
 function drawChart(){
+  const series=sel==="all"?["A","B"]:[sel];
+  $("legend").innerHTML=series.map(c=>`<span><i style="background:var(--${c==="A"?"a":"b"})"></i>ลูกค้า ${c}</span>`).join("");
   const months=[...new Set(records.map(r=>r.month))].sort();
   const el=$("chart");
   if(!months.length){el.innerHTML='<p class="empty">กราฟจะแสดงเมื่อมีข้อมูล</p>';return;}
   const W=520,H=230,L=52,R=8,T=10,B=28;
-  const series=sel==="all"?["A","B"]:[sel];
   const val=(c,m)=>{const r=records.find(x=>x.customer===c&&x.month===m);return r?+r.revenue:0};
   let max=Math.max(1,...months.flatMap(m=>series.map(c=>val(c,m))));
   const step=Math.pow(10,Math.floor(Math.log10(max)));max=Math.ceil(max/step)*step;
@@ -257,33 +272,54 @@ const denied=err=>err&&err.code==="permission-denied";
 const toRec=r=>({customer:r.customer,month:r.month,trips:Math.round(r.trips),weightTon:Math.round(r.weightTon*10)/10,
   revenue:Math.round(r.revenue),updatedAt:new Date().toISOString()});
 
-// ---- connect ----
-$("keybox").addEventListener("submit",e=>{
+// ---- login ----
+$("login-f").addEventListener("submit",async e=>{
   e.preventDefault();
-  const v=$("key-in").value.trim(), m=v.match(/[#?&]k=([A-Za-z0-9_-]+)/);
-  const k=m?m[1]:v;
-  if(!/^[A-Za-z0-9_-]{16,}$/.test(k)){setConn(false,"รหัสไม่ถูกรูปแบบ ตรวจว่าคัดลอกมาครบ");return;}
-  try{localStorage.setItem("cu-key",k);}catch(e){}
-  location.replace(location.pathname+"#k="+k);location.reload();
+  const user=$("l-user").value.trim().toLowerCase(), pass=$("l-pass").value;
+  if(!/^[a-z0-9._-]+$/.test(user)){$("l-err").textContent="ชื่อผู้ใช้ไม่ถูกต้อง";return;}
+  $("l-btn").disabled=true;$("l-err").textContent="";
+  try{
+    await signInWithEmailAndPassword(auth,user+"@"+DOMAIN,pass+PW_SUFFIX);
+    $("l-pass").value="";
+  }catch(err){
+    $("l-err").textContent=err.code==="auth/too-many-requests"?"ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่"
+      :err.code==="auth/network-request-failed"?"เชื่อมต่ออินเทอร์เน็ตไม่ได้"
+      :"ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+  }finally{$("l-btn").disabled=false;}
 });
-if(!/^[A-Za-z0-9_-]{16,}$/.test(KEY)){
-  setConn(false,"ยังไม่มีรหัสเข้าใช้งาน");
-  $("keybox").hidden=false;$("key-in").focus();
-}else{
-  onSnapshot(recCol(),snap=>{
+$("btn-logout").addEventListener("click",()=>signOut(auth));
+
+onAuthStateChanged(auth,u=>{
+  if(unsub){unsub();unsub=null;}
+  records=[];lastUpdate=null;setWritable(false);
+  role=u?ROLE_OF[(u.email||"").toLowerCase()]||null:null;
+  $("login").hidden=!!role; $("app").hidden=!role;
+  if(u&&!role){$("l-err").textContent="บัญชีนี้ยังไม่ได้รับสิทธิ์ ติดต่อผู้ดูแล";signOut(auth);return;}
+  if(!role){$("l-user").focus();return;}
+
+  const isAdmin=role==="admin";
+  document.querySelectorAll(".admin-only").forEach(el=>el.hidden=!isAdmin);
+  sel=isAdmin?"all":role;
+  $("who").textContent=isAdmin?"ผู้ดูแลระบบ":"ลูกค้า "+role;
+  $("title").textContent=isAdmin?"ยอดใช้บริการขนส่งของลูกค้า":"ยอดใช้บริการขนส่ง ลูกค้า "+role;
+  $("subtitle").textContent=isAdmin?"ลูกค้าแต่ละรายเห็นเฉพาะข้อมูลของตัวเอง":"ข้อมูลอัปเดตอัตโนมัติเมื่อมีการบันทึกใหม่";
+  setUpdated();render();setConn(false,"กำลังโหลดข้อมูล");
+
+  // ลูกค้าต้อง query เฉพาะของตัวเอง (Rules ไม่ยอมให้ดึงทั้งหมด)
+  const q=isAdmin?recCol:query(recCol,where("customer","==",role));
+  unsub=onSnapshot(q,snap=>{
     records=snap.docs.map(d=>({id:d.id,...d.data()})).filter(r=>r.month&&r.customer);
     lastUpdate=records.reduce((a,r)=>r.updatedAt&&r.updatedAt>a?r.updatedAt:a,"")||null;
-    setConn(true,"เชื่อมต่อที่เก็บข้อมูลกลางแล้ว");setWritable(true);
+    setConn(true,"เชื่อมต่อแล้ว");setWritable(isAdmin);
     setUpdated();render();
     if(freshId)setTimeout(()=>{freshId=null;render()},1800);
   },err=>{
     records=[];setWritable(false);render();
-    if(denied(err)){try{localStorage.removeItem("cu-key");}catch(e){}$("keybox").hidden=false;}
-    setConn(false,denied(err)?"รหัสไม่ถูกต้องหรือถูกยกเลิกแล้ว ขอรหัสใหม่จากผู้ดูแล":"การเชื่อมต่อหลุด รีเฟรชหน้าเพื่อเชื่อมใหม่");
+    setConn(false,denied(err)?"บัญชีนี้ไม่มีสิทธิ์ดูข้อมูล ติดต่อผู้ดูแล":"การเชื่อมต่อหลุด รีเฟรชหน้าเพื่อเชื่อมใหม่");
   });
-}
+});
 
-// ---- form ----
+// ---- form (admin) ----
 $("f").addEventListener("submit",async e=>{
   e.preventDefault();
   if(!canWrite)return;
@@ -293,7 +329,7 @@ $("f").addEventListener("submit",async e=>{
   $("f-btn").disabled=true;$("msg").textContent="กำลังบันทึก...";
   try{
     const id=c+"_"+m; freshId=id;
-    await setDoc(recDoc(id),rec);
+    await setDoc(doc(recCol,id),rec);
     $("msg").textContent=`บันทึกลูกค้า ${c} เดือน ${mLabel(m)} แล้ว เครื่องอื่นจะเห็นข้อมูลนี้ทันที`;
     $("f-t").value=$("f-w").value=$("f-r").value="";
   }catch(err){
@@ -301,8 +337,7 @@ $("f").addEventListener("submit",async e=>{
   }finally{$("f-btn").disabled=!canWrite;}
 });
 
-// ---- upload ----
-let pending=[];
+// ---- upload (admin) ----
 const findCol=(keys,words)=>keys.find(k=>words.some(w=>String(k).replace(/\s/g,"").toLowerCase().includes(w)));
 function toMonth(v){
   if(v==null||v==="")return null;
@@ -356,7 +391,7 @@ $("up-save").addEventListener("click",async()=>{
   try{
     for(let i=0;i<rows.length;i+=450){ // writeBatch รับได้สูงสุด 500 รายการต่อครั้ง
       const b=writeBatch(fs);
-      rows.slice(i,i+450).forEach(([id,r])=>{b.set(recDoc(id),toRec(r));freshId=id;});
+      rows.slice(i,i+450).forEach(([id,r])=>{b.set(doc(recCol,id),toRec(r));freshId=id;});
       await b.commit();
     }
     resetUpload();$("up-msg").textContent=`บันทึก ${rows.length} แถวแล้ว เครื่องอื่นจะเห็นข้อมูลนี้ทันที`;
@@ -367,7 +402,6 @@ $("up-save").addEventListener("click",async()=>{
 });
 
 const now=new Date();$("f-m").value=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
-render();
 </script>
 </body>
 </html>
